@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# original
+# https://github.com/junegunn/fzf/blob/master/ADVANCED.md#using-fzf-as-interative-ripgrep-launcher
+
+ROOT=$(cd `dirname $0`/.. && pwd)
+PAGES=${ROOT}/docs/
+RG_PREFIX="rg --column --line-number --no-heading --color=always --smart-case "
+INITIAL_QUERY="${*:-}"
+
+(
+    cd ${PAGES}
+    IFS=: read -ra selected < <(
+      FZF_DEFAULT_COMMAND="$RG_PREFIX $(printf %q "$INITIAL_QUERY")" \
+      fzf --ansi \
+          --disabled --query "$INITIAL_QUERY" \
+          --bind "change:reload:sleep 0.1; $RG_PREFIX {q} || true" \
+          --delimiter : \
+          --preview 'bat --color=always {1} --highlight-line {2}' \
+          --preview-window 'up,60%,border-bottom,+{2}+3/3,~3'
+    )
+    [ -n "${selected[0]}" ] && tmux popup -w80% -h80% -d '#{pane_current_path}' "bat --color=always ${PAGES}${selected[0]} --highlight-line ${selected[1]}"
+)
